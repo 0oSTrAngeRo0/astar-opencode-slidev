@@ -1,0 +1,4 @@
+{
+  // Enable the slidev plugin for this project
+  "plugin": ["astar-opencode-slidev"]
+}

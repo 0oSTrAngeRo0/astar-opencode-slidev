@@ -1,0 +1,17 @@
+{
+  "name": "astar-opencode-slidev",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "plugin.js",
+  "description": "OpenCode plugin for bootstrapping and managing Slidev presentations",
+  "license": "MIT",
+  "scripts": {
+    "postinstall": "bash scripts/fetch-skill.sh"
+  },
+  "files": [
+    "plugin.js",
+    "scripts/",
+    "skills/slidev-bootstrap/",
+    "templates/"
+  ]
+}
