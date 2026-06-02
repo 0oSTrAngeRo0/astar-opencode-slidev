@@ -14,7 +14,7 @@ fi
 echo "Creating Slidev project at: $TARGET"
 
 mkdir -p "$TARGET"
-cp -r "$TEMPLATES"/* "$TARGET"/
+cp -a "$TEMPLATES"/. "$TARGET"/
 
 cd "$TARGET"
 npm install

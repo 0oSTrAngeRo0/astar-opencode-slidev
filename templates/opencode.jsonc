@@ -1,4 +1,5 @@
 {
-  // Enable the slidev plugin for this project
-  "plugin": ["astar-opencode-slidev"]
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["astar-opencode-slidev"],
+  "instructions": [".opencode/slidev-instructions.md"]
 }
