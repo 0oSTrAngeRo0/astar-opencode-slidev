@@ -5,26 +5,46 @@ import { execSync } from 'child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-function fetchSkill() {
+function cloneSkillTo(targetDir) {
+  const tmpDir = `/tmp/_slidev_skill_${process.pid}`;
+
+  if (fs.existsSync(tmpDir)) {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+
+  execSync(
+    `git clone --depth 1 --filter=blob:none https://github.com/slidevjs/slidev.git "${tmpDir}"`,
+    { stdio: 'pipe', timeout: 30000 },
+  );
+
+  const commit = execSync(
+    `git -C "${tmpDir}" log -1 --format='%h %s'`,
+    { encoding: 'utf8', timeout: 5000 },
+  ).trim();
+
+  fs.mkdirSync(targetDir, { recursive: true });
+  fs.cpSync(path.join(tmpDir, 'skills', 'slidev'), targetDir, { recursive: true });
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+
+  return commit;
+}
+
+function ensureSkill() {
   const skillDir = path.resolve(__dirname, 'skills', 'slidev');
   if (fs.existsSync(path.join(skillDir, 'SKILL.md'))) return;
+  try { cloneSkillTo(skillDir); } catch {}
+}
 
-  try {
-    execSync(
-      [
-        `git clone --depth 1 --filter=blob:none https://github.com/slidevjs/slidev.git /tmp/_slidev_skill_${process.pid}`,
-        `rm -rf "${skillDir}"/*`,
-        `mkdir -p "${skillDir}"`,
-        `cp -r /tmp/_slidev_skill_${process.pid}/skills/slidev/* "${skillDir}"/`,
-        `rm -rf /tmp/_slidev_skill_${process.pid}`,
-      ].join(' && '),
-      { stdio: 'pipe', timeout: 30000 },
-    );
-  } catch {}
+function updateSkill() {
+  const skillDir = path.resolve(__dirname, 'skills', 'slidev');
+  if (fs.existsSync(skillDir)) {
+    fs.rmSync(skillDir, { recursive: true, force: true });
+  }
+  return cloneSkillTo(skillDir);
 }
 
 export const SlidevPlugin = async ({ directory }) => {
-  fetchSkill();
+  ensureSkill();
 
   const hasSlidesProject = fs.existsSync(path.join(directory, 'slides.md'));
 
@@ -44,6 +64,54 @@ export const SlidevPlugin = async ({ directory }) => {
           config.skills.paths.push(bootstrapPath);
         }
       }
+    },
+    tool: {
+      "slidev:bootstrap": {
+        description: "Initialize a new Slidev project from templates. Copies template files and runs npm install.",
+        args: {
+          target: {
+            type: "string",
+            description: "Target directory path for the new Slidev project. If relative, resolved against the current working directory.",
+          },
+        },
+        execute: async (args, ctx) => {
+          const target = args.target || '.';
+          const cwd = ctx.directory || directory;
+          const targetDir = path.isAbsolute(target) ? target : path.resolve(cwd, target);
+
+          const templatesDir = path.resolve(__dirname, 'templates');
+          if (!fs.existsSync(templatesDir)) {
+            return { output: `Error: templates directory not found at ${templatesDir}` };
+          }
+
+          fs.mkdirSync(targetDir, { recursive: true });
+          fs.cpSync(templatesDir, targetDir, { recursive: true });
+
+          execSync('npm install', { cwd: targetDir, stdio: 'pipe', timeout: 120000 });
+
+          return {
+            output: [
+              `Slidev project created at: ${targetDir}`,
+              '',
+              `  cd ${targetDir}`,
+              '  npm run dev     # Start dev server',
+              '  npm run build   # Build single HTML file',
+            ].join('\n'),
+          };
+        },
+      },
+      "slidev:fetch-skill": {
+        description: "Fetch the latest Slidev skill reference from GitHub. Updates the local skill file used for AI guidance on Slidev.",
+        args: {},
+        execute: async () => {
+          try {
+            const commit = updateSkill();
+            return `Slidev skill updated successfully (${commit})`;
+          } catch (e) {
+            return `Failed to fetch Slidev skill: ${e.message}`;
+          }
+        },
+      },
     },
   };
 };
